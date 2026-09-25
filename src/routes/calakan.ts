@@ -4,7 +4,7 @@ import { requireAuth, type User } from "../auth";
 import { accessibleClasses, assertCanView, buildWeek, buildWeeks, saveRows, copyRows, canPublish, isWaliOf, isHomeroomOf, schoolDays, weekLabel } from "../calakan";
 import { buildWorkbook } from "../excel";
 import { notifyUsers } from "../push";
-import { bad, forbidden, int, mondayOf, parseYMD, rentangIndo, addDays } from "../util";
+import { bad, forbidden, int, mondayOf, parseYMD, rentangIndo, rentangSingkat, addDays } from "../util";
 import { getSettings } from "../settings";
 
 type Env = { Variables: { user: User } };
@@ -84,10 +84,15 @@ calakanApi.post("/publish", requireAuth("admin", "wali"), async (c) => {
     [classId]
   );
   const s = await getSettings();
-  const label = rentangIndo(week, data.week.end);
-  const title = wasPublished ? `Pembaruan ${s.app_name || "CALAKAN"} Kelas ${data.class.label}` : `${s.app_name || "CALAKAN"} Kelas ${data.class.label} sudah terbit`;
+  // Judul notifikasi di HP hanya muat ±35 karakter: pekan di judul, kelas di awal isi,
+  // sehingga keduanya tetap terlihat walau wali kelas menulis pesan sendiri
+  const app = s.app_name || "CALAKAN";
+  const pekan = rentangSingkat(week, data.week.end);
+  const title = wasPublished ? `Pembaruan ${app} ${pekan}` : `${app} ${pekan} sudah terbit`;
   const note = String(b.message || "").trim().slice(0, 200);
-  const msg = note || (wasPublished ? `Ada perubahan rencana pembelajaran pekan ${label}. Ketuk untuk melihat.` : `Rencana pembelajaran pekan ${label} sudah dapat dilihat. Ketuk untuk membuka.`);
+  const msg = `Kelas ${data.class.label} · ${
+    note || (wasPublished ? "Ada perubahan rencana pembelajaran. Ketuk untuk melihat." : "Rencana pembelajaran sudah dapat dilihat. Ketuk untuk membuka.")
+  }`;
   const res = await notifyUsers(
     parents.map((p) => p.id),
     { title, body: msg, url: `/#/calakan?week=${week}`, tag: `calakan-${classId}-${week}` }

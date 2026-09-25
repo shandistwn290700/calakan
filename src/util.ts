@@ -65,6 +65,16 @@ export function rentangIndo(start: string, end: string) {
   return `${tglIndo(start)} s.d. ${tglIndo(end)}`;
 }
 
+/** Versi ringkas untuk judul notifikasi: "14–18 Sep", "29 Sep–3 Okt", "29 Des 2026–2 Jan 2027" */
+export function rentangSingkat(start: string, end: string) {
+  const a = parseYMD(start)!;
+  const b = parseYMD(end)!;
+  const bl = (d: Date) => BULAN[d.getMonth()].slice(0, 3);
+  if (a.getFullYear() !== b.getFullYear()) return `${a.getDate()} ${bl(a)} ${a.getFullYear()}–${b.getDate()} ${bl(b)} ${b.getFullYear()}`;
+  if (a.getMonth() !== b.getMonth()) return `${a.getDate()} ${bl(a)}–${b.getDate()} ${bl(b)}`;
+  return `${a.getDate()}–${b.getDate()} ${bl(b)}`;
+}
+
 export function str(v: any, max = 1000) {
   if (v === undefined || v === null) return "";
   return String(v).trim().slice(0, max);
