@@ -1,0 +1,5 @@
+# Akhir baris LF untuk semua file teks (server Linux/Railway); .bat tetap CRLF untuk Windows
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.ico binary
