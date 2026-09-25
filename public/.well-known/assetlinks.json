@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "id.sch.bahteranuh.calakan",
+      "sha256_cert_fingerprints": ["4D:22:52:A7:03:04:BA:31:84:A4:45:02:2E:00:90:C7:0D:55:09:4F:DB:1E:09:43:4A:E8:05:1C:B9:9C:04:36"]
+    }
+  }
+]

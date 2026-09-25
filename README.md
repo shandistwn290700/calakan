@@ -130,7 +130,8 @@ calakan/
 │  ├─ index.html, sw.js   # SPA + service worker
 │  ├─ css/app.css
 │  └─ js/                 # halaman (pages/), komponen, PDF (print.js)
-└─ scripts/seed-demo.ts   # data contoh
+├─ scripts/seed-demo.ts   # data contoh
+└─ android/               # aplikasi Android (TWA) → APK
 ```
 
 ## 8. Keamanan
@@ -182,7 +183,33 @@ Repositori ini sudah berisi `Dockerfile` dan `railway.json` (build Docker, healt
 
 Catatan: jangan jalankan `bun run demo` di production. Waktu aplikasi & database sudah dikunci ke WIB walau server Railway memakai UTC.
 
-## 11. Kendala Umum
+## 11. Aplikasi Android (APK)
+
+Folder `android/` berisi aplikasi Android berbasis **Trusted Web Activity (TWA)**: APK membuka `https://calakan-production.up.railway.app` layar penuh lewat Chrome, sehingga push notification, login, dan cetak PDF bekerja sama seperti versi web. Pembaruan aplikasi web langsung terlihat di APK tanpa perlu memasang ulang.
+
+- Nama paket: `id.sch.bahteranuh.calakan`
+- Butuh Chrome (atau browser lain yang mendukung TWA) di HP; Android 6.0 ke atas.
+- `public/.well-known/assetlinks.json` membuktikan APK dan situs milik pihak yang sama. Tanpa file ini (atau bila kunci berbeda), aplikasi tetap jalan tetapi menampilkan bilah alamat.
+
+### Membangun APK
+
+Butuh Android SDK (dari Android Studio) dan file kunci `android/calakan-release.jks` + `android/keystore.properties` (tidak ada di Git).
+
+```bash
+cd android
+# Windows: set JAVA_HOME ke JDK Android Studio, lalu
+gradlew.bat assembleRelease
+```
+
+Hasil: `android/app/build/outputs/apk/release/app-release.apk`.
+
+Untuk rilis berikutnya, naikkan `versionCode` dan `versionName` di `android/app/build.gradle.kts`.
+
+> ⚠️ **Kunci penandatanganan wajib dicadangkan.** APK versi berikutnya harus ditandatangani dengan kunci yang sama. Bila `calakan-release.jks` atau kata sandinya hilang, HP yang sudah memasang CALAKAN tidak bisa menerima pembaruan (harus hapus lalu pasang ulang), dan `assetlinks.json` harus diganti.
+
+Bila domain berubah, perbarui `android/app/src/main/res/values/strings.xml` lalu build ulang.
+
+## 12. Kendala Umum
 
 | Masalah | Solusi |
 |---|---|

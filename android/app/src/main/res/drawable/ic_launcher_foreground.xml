@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dibuat dari public/img/icon.svg -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:scaleX="0.2083" android:scaleY="0.2083" android:translateX="0.675" android:translateY="2.342">
+        <path android:fillColor="#FFFFFF" android:pathData="M148,136 h216 a36,36 0 0 1 36,36 v184 a36,36 0 0 1 -36,36 h-216 a36,36 0 0 1 -36,-36 v-184 a36,36 0 0 1 36,-36 z" />
+        <path android:fillColor="#CCFBF1" android:pathData="M148,136 h216 a36,36 0 0 1 36,36 v0 a36,36 0 0 1 -36,36 h-216 a36,36 0 0 1 -36,-36 v-0 a36,36 0 0 1 36,-36 z" />
+        <path android:fillColor="#CCFBF1" android:pathData="M112,180 h288 v28 h-288 z" />
+        <path android:fillColor="#FFFFFF" android:strokeColor="#0F766E" android:strokeWidth="10" android:pathData="M182,104 h0 a14,14 0 0 1 14,14 v40 a14,14 0 0 1 -14,14 h-0 a14,14 0 0 1 -14,-14 v-40 a14,14 0 0 1 14,-14 z" />
+        <path android:fillColor="#FFFFFF" android:strokeColor="#0F766E" android:strokeWidth="10" android:pathData="M330,104 h0 a14,14 0 0 1 14,14 v40 a14,14 0 0 1 -14,14 h-0 a14,14 0 0 1 -14,-14 v-40 a14,14 0 0 1 14,-14 z" />
+        <path android:strokeColor="#0F766E" android:strokeWidth="34" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M184,300 l44,44 l100,-100" />
+    </group>
+</vector>

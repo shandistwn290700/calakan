@@ -187,8 +187,18 @@ try {
   await initDb();
   await initPush();
 } catch (e: any) {
+  const { host, port, user, database } = config.db;
+  const local = host === "127.0.0.1" || host === "localhost";
   console.error("\n✖ Gagal terhubung ke database MySQL.");
-  console.error("  Pastikan MySQL di XAMPP Control Panel sudah [Start] dan pengaturan .env benar.");
+  console.error(`  Mencoba: ${user}@${host}:${port}/${database}`);
+  if (local && Bun.env.RAILWAY_ENVIRONMENT) {
+    console.error("  Di Railway: alamat database belum terbaca. Isi MYSQLHOST dkk. dengan ${{MySQL.MYSQLHOST}} (lihat README bagian 10)");
+    console.error("  dan hapus variabel DB_HOST/DB_PORT/DB_USER/DB_NAME yang menimpanya.");
+  } else if (local) {
+    console.error("  Pastikan MySQL di XAMPP Control Panel sudah [Start] dan pengaturan .env benar.");
+  } else {
+    console.error("  Pastikan server MySQL tersebut menyala, dapat dijangkau, dan user/password benar.");
+  }
   console.error("  Detail:", e?.message || e, "\n");
   process.exit(1);
 }

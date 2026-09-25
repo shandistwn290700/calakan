@@ -1,0 +1,14 @@
+.gradle/
+build/
+app/build/
+local.properties
+.idea/
+*.iml
+
+# Kunci penandatanganan APK — JANGAN di-commit. Simpan cadangannya di tempat aman.
+keystore.properties
+*.jks
+*.keystore
+
+# Hasil build siap bagikan
+dist/
