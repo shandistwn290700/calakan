@@ -1,5 +1,5 @@
 import { get, put, post } from "../api.js";
-import { esc, HARI, toast, alertError, confirm, withBtn, emptyState, openModal } from "../ui.js";
+import { esc, HARI, showActiveTab, toast, alertError, confirm, withBtn, emptyState, openModal } from "../ui.js";
 import { state } from "../app.js";
 
 export default async function jadwal({ el, me, query, setLeaveGuard }) {
@@ -46,6 +46,7 @@ export default async function jadwal({ el, me, query, setLeaveGuard }) {
     el.querySelector("#tabs").innerHTML = classes
       .map((c) => `<button class="tab ${c.id === classId ? "active" : ""}" data-c="${c.id}">${esc(c.rombel)} <span class="small" style="font-weight:500">${esc(c.name)}</span></button>`)
       .join("");
+    showActiveTab(el.querySelector("#tabs"));
   }
 
   const subjOptions = (sel) =>

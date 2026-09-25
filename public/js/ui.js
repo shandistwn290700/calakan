@@ -271,6 +271,14 @@ export const skeleton = (n = 4) =>
 
 export const emptyState = (icon, title, text = "") => `<div class="empty"><i class="bi ${icon}"></i><b>${esc(title)}</b>${text ? `<span>${text}</span>` : ""}</div>`;
 
+/** Deretan tab yang digeser (HP): geser tab aktif ke tengah agar tidak tersembunyi di luar layar */
+export function showActiveTab(tabs) {
+  const a = tabs?.querySelector(".tab.active");
+  if (!a || tabs.scrollWidth <= tabs.clientWidth) return;
+  const t = tabs.getBoundingClientRect(), r = a.getBoundingClientRect();
+  tabs.scrollLeft += r.left + r.width / 2 - (t.left + t.width / 2);
+}
+
 /** Komponen pemilih pekan */
 export function weekPicker(el, week, onChange, days = 5) {
   const render = () => {

@@ -1,8 +1,8 @@
 /* Service worker CALAKAN: push notification + fallback offline sederhana */
-const CACHE = "calakan-shell-v2";
+const CACHE = "calakan-shell-v3";
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/css/app.css?v=2", "/icon-192.png"]).catch(() => {})));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/css/app.css?v=3", "/icon-192.png"]).catch(() => {})));
   self.skipWaiting();
 });
 

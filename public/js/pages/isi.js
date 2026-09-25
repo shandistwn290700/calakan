@@ -1,5 +1,5 @@
 import { get, put, post } from "../api.js";
-import { esc, waliText, nl2br, toast, alertError, confirm, withBtn, emptyState, weekPicker, mondayOf, addDays, openModal, rentang, waktu } from "../ui.js";
+import { esc, waliText, showActiveTab, nl2br, toast, alertError, confirm, withBtn, emptyState, weekPicker, mondayOf, addDays, openModal, rentang, waktu } from "../ui.js";
 import { statusBadge, progressBar } from "../components/calview.js";
 import { state } from "../app.js";
 
@@ -57,6 +57,7 @@ export default async function isi({ el, me, query, setLeaveGuard }) {
         <span class="small" style="font-weight:500">${esc(c.name)}</span></button>`
       )
       .join("");
+    showActiveTab(el.querySelector("#tabs"));
   }
 
   const field = (r, f, label, ph) =>

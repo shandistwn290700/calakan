@@ -279,6 +279,10 @@ table.t tr.group-row td { background: var(--p-50); font-weight: 700; color: var(
 /* ---------- Tabs / segmented ---------- */
 .tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
+/* Mouse/trackpad: tidak ada gestur geser, jadi tab turun ke baris berikutnya agar semua kelas terjangkau */
+@media (hover: hover) and (pointer: fine) {
+  .tabs { flex-wrap: wrap; overflow-x: visible; }
+}
 .tab { border: 1px solid var(--line); background: #fff; padding: 8px 14px; border-radius: 99px; font-weight: 600; font-size: 13.5px; cursor: pointer; white-space: nowrap; transition: all 0.15s; color: var(--text); }
 .tab:hover { border-color: var(--p-200); }
 .tab.active { background: var(--p); border-color: var(--p); color: #fff; box-shadow: 0 6px 14px -8px var(--p); }
