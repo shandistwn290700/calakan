@@ -2,7 +2,8 @@ import { q, one, exec } from "./db";
 import type { User } from "./auth";
 import { DAY_NAMES } from "./config";
 import { getSettings } from "./settings";
-import { addDays, rentangIndo, tglIndo, forbidden, notFound, bad, faseOf, str } from "./util";
+import { addDays, rentangIndo, rentangSingkat, tglIndo, forbidden, notFound, bad, faseOf, str } from "./util";
+import { notifyUsers } from "./push";
 
 export type Row = {
   key: string;
@@ -65,8 +66,43 @@ export async function isWaliOf(user: User, classId: number) {
   return !!r;
 }
 
-export async function canPublish(user: User, classId: number) {
-  return user.role === "admin" || (await isWaliOf(user, classId));
+/** CALAKAN terbit otomatis Sabtu 19.00; penerbitan manual (mis. kirim pembaruan) hanya oleh admin/Waka Kurikulum */
+export async function canPublish(user: User, _classId?: number) {
+  return user.role === "admin";
+}
+
+/**
+ * Terbitkan CALAKAN satu kelas & kirim push ke orang tuanya.
+ * byUserId null = terbit otomatis oleh sistem. Mengembalikan null bila CALAKAN masih kosong.
+ */
+export async function publishWeek(classId: number, week: string, byUserId: number | null, message = "") {
+  const data = await buildWeek(classId, week, null);
+  if (!data.progress.filled) return null;
+  const wasPublished = data.week.status === "published";
+  await exec(
+    `INSERT INTO calakan_weeks (class_id, week_start, status, published_at, published_by) VALUES (?, ?, 'published', NOW(), ?)
+     ON DUPLICATE KEY UPDATE status = 'published', published_at = NOW(), published_by = VALUES(published_by), has_changes = 0`,
+    [classId, week, byUserId]
+  );
+  const parents = await q<any>(
+    `SELECT u.id FROM users u JOIN students s ON s.id = u.student_id WHERE s.class_id = ? AND u.role = 'ortu' AND u.is_active = 1`,
+    [classId]
+  );
+  // Judul notifikasi di HP hanya muat ±35 karakter: pekan di judul, kelas di awal isi,
+  // sehingga keduanya tetap terlihat walau admin menulis pesan sendiri
+  const s = await getSettings();
+  const app = s.app_name || "CALAKAN";
+  const pekan = rentangSingkat(week, data.week.end);
+  const title = wasPublished ? `Pembaruan ${app} ${pekan}` : `${app} ${pekan} sudah terbit`;
+  const note = String(message || "").trim().slice(0, 200);
+  const body = `Kelas ${data.class.label} · ${
+    note || (wasPublished ? "Ada perubahan rencana pembelajaran. Ketuk untuk melihat." : "Rencana pembelajaran sudah dapat dilihat. Ketuk untuk membuka.")
+  }`;
+  const res = await notifyUsers(
+    parents.map((p) => p.id),
+    { title, body, url: `/#/calakan?week=${week}`, tag: `calakan-${classId}-${week}` }
+  );
+  return { ...res, wasPublished };
 }
 
 /** Jumlah hari sekolah: 5 (Senin–Jumat, bawaan) atau 6 (Senin–Sabtu) */
@@ -272,7 +308,7 @@ function assembleWeek(cls: any, schedule: any[], items: any[], week: any, mySubj
       last_update: lastUpdate,
     },
     progress: { total, filled, mine, mine_filled: mineFilled },
-    can_publish: !!user && (user.role === "admin" || isWali),
+    can_publish: !!user && user.role === "admin",
     days,
   };
 }

@@ -65,9 +65,9 @@ Pekan contoh: **14–18 September 2026**. Data demo bisa dihapus lewat menu Data
 1. **Admin** menyiapkan **Data Kelas** (termasuk siswa, bisa diimpor dari Excel), **Mata Pelajaran**, dan **Data Guru**. Guru ditambahkan beserta mapel yang diampu di tiap kelas.
 2. **Admin** menyusun **Jadwal Pelajaran** per kelas. Setiap mapel di jadwal menjadi satu baris isian CALAKAN.
 3. **Admin** membuat **akun orang tua**, bisa sekaligus secara massal. Username dan password awal = NIS.
-4. **Guru / wali kelas** membuka **Isi Rencana**, memilih kelas dan pekan, lalu mengisi *Materi, Rencana Kegiatan, Tugas, Keterangan*. Isian bisa disalin dari pekan lalu atau dari kelas paralel.
-5. **Wali kelas** memeriksa **CALAKAN Kelas Saya**, lalu menekan **Terbitkan**. Orang tua di kelas itu langsung menerima notifikasi.
-6. Jika ada perubahan setelah terbit, wali kelas menekan **Kirim Pembaruan**.
+4. Setiap **Kamis 10.00 – Jumat 13.00 WIB**, **guru / wali kelas** membuka **Isi Rencana** dan mengisi *Materi, Rencana Kegiatan, Tugas, Keterangan* untuk **pekan depan**. Isian bisa disalin dari pekan lalu atau dari kelas paralel. (Lihat [Jadwal CALAKAN](#jadwal-calakan).)
+5. **Sabtu 19.00 WIB** semua kelas yang terisi **terbit otomatis**, dan orang tua langsung menerima notifikasi.
+6. Jika ada perubahan setelah terbit, **admin (Waka Kurikulum)** mengubah isian lalu menekan **Kirim Pembaruan**.
 7. **Admin** dapat melihat dan mencetak CALAKAN semua kelas ke **PDF** atau **Excel**. Wali kelas hanya dapat mencetak kelasnya sendiri.
 
 ### Hak akses
@@ -76,14 +76,31 @@ Pekan contoh: **14–18 September 2026**. Data demo bisa dihapus lewat menu Data
 |---|:-:|:-:|:-:|:-:|
 | Kelola kelas, siswa, mapel, guru, jadwal, akun | ✔ | | | |
 | Tampilan, backup & restore | ✔ | | | |
-| Isi rencana sesuai mapel yang diampu | ✔ (semua) | ✔ | ✔ | |
-| Terbitkan & kirim notifikasi | ✔ | ✔ (kelasnya) | | |
+| Isi rencana sesuai mapel yang diampu | ✔ (semua, kapan pun) | ✔ (Kamis 10.00 – Jumat 13.00) | ✔ (Kamis 10.00 – Jumat 13.00) | |
+| Terbitkan manual / kirim pembaruan / tarik | ✔ | | | |
 | Cetak PDF / Excel | ✔ (semua kelas) | ✔ (kelasnya) | | |
 | Lihat CALAKAN yang sudah terbit + notifikasi | | | | ✔ |
 
 > Wali kelas juga boleh mengisi mapel di kelasnya yang **belum punya guru pengampu**.
 >
-> Kelas **1 dan 2 (Fase A)** boleh memiliki **wali kelas utama dan pendamping**. Keduanya punya hak yang sama (mengisi, menerbitkan, mencetak). Kolom tanda tangan PDF/Excel memakai nama wali utama.
+> Kelas **1 dan 2 (Fase A)** boleh memiliki **wali kelas utama dan pendamping**. Keduanya punya hak yang sama (mengisi & mencetak). Kolom tanda tangan PDF/Excel memakai nama wali utama.
+
+### Jadwal CALAKAN
+
+Semua waktu dalam **WIB**, dihitung server (tidak bergantung jam HP).
+
+| Waktu | Yang terjadi |
+|---|---|
+| **Kamis 10.00** | Pengisian CALAKAN **pekan depan** dibuka. Push ke wali kelas & guru: *"CALAKAN 5–9 Okt dibuka"*. |
+| **Jumat 10.00** | Push pengingat ke yang **belum mengisi semua** mapelnya. |
+| **Jumat 12.00** | Push terakhir: *"1 jam lagi CALAKAN ditutup"*. |
+| **Jumat 13.00** | Pengisian ditutup. |
+| **Sabtu 19.00** | Semua kelas yang terisi **terbit otomatis**; orang tua menerima push. Kelas yang masih kosong tidak diterbitkan. |
+
+- Di luar Kamis 10.00 – Jumat 13.00, wali kelas & guru **tidak dapat mengisi, mengubah, atau menghapus** isian (termasuk menyalin). Halaman Isi Rencana tetap bisa dibuka untuk dilihat.
+- Guru yang belum mengisi sampai batas waktu akan melihat peringatan **"Hubungi Waka Kurikulum/Admin"** saat membuka Isi Rencana.
+- **Admin (Waka Kurikulum)** dapat mengisi/mengubah kapan pun, lalu mengirim pembaruan ke orang tua.
+- Pengingat hanya dikirim ke guru yang memang punya rencana di pekan tersebut. Setiap pengingat & penerbitan hanya berjalan sekali; bila server sempat mati, tugas yang terlewat tetap dijalankan selama masih relevan (mis. terbit otomatis paling lambat Minggu malam).
 
 ---
 
@@ -121,7 +138,8 @@ calakan/
 ├─ src/
 │  ├─ db.ts               # koneksi MySQL, skema tabel, data awal
 │  ├─ auth.ts             # sesi login (cookie HttpOnly), pembatas percobaan login
-│  ├─ calakan.ts          # logika CALAKAN (susun pekan, hak edit, salin)
+│  ├─ calakan.ts          # logika CALAKAN (susun pekan, hak edit, salin, terbit)
+│  ├─ schedule.ts         # jadwal pengisian, pengingat & terbit otomatis (WIB)
 │  ├─ excel.ts            # ekspor Excel & impor siswa
 │  ├─ push.ts             # web push (VAPID)
 │  ├─ crypto.ts           # enkripsi file backup

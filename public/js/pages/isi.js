@@ -1,5 +1,5 @@
 import { get, put, post } from "../api.js";
-import { esc, waliText, showActiveTab, nl2br, toast, alertError, confirm, withBtn, emptyState, weekPicker, mondayOf, addDays, openModal, rentang, waktu } from "../ui.js";
+import { esc, waliText, showActiveTab, nl2br, toast, alertError, confirm, withBtn, emptyState, weekPicker, mondayOf, addDays, openModal, rentang, waktu, tgl } from "../ui.js";
 import { statusBadge, progressBar } from "../components/calview.js";
 import { state } from "../app.js";
 
@@ -12,7 +12,9 @@ export default async function isi({ el, me, query, setLeaveGuard }) {
     return;
   }
   let classId = Number(query.class_id) || (classes.find((c) => c.is_homeroom) || classes[0]).id;
-  let week = mondayOf(query.week);
+  // Jadwal pengisian: wali/guru mengisi CALAKAN PEKAN DEPAN pada Kamis 10.00 – Jumat 13.00 WIB
+  const win = await get("/calakan/window", { quiet: true }).catch(() => null);
+  let week = mondayOf(query.week || (me.role !== "admin" && win ? win.target_week : undefined));
   let onlyMine = me.role !== "admin";
   let data = null;
   const dirty = new Map(); // key -> row values
@@ -60,8 +62,35 @@ export default async function isi({ el, me, query, setLeaveGuard }) {
     showActiveTab(el.querySelector("#tabs"));
   }
 
+  const locked = () => !!data?.lock;
   const field = (r, f, label, ph) =>
-    `<label><span>${label}</span><textarea class="input" rows="2" data-f="${f}" placeholder="${ph}">${esc(r[f])}</textarea></label>`;
+    `<label><span>${label}</span><textarea class="input" rows="2" data-f="${f}" placeholder="${locked() ? "" : ph}" ${locked() ? "readonly" : ""}>${esc(r[f])}</textarea></label>`;
+
+  /** Info jadwal: terkunci / sedang dibuka / kapan terbit otomatis */
+  function scheduleNote() {
+    const w = data.week;
+    if (data.lock)
+      return `<div class="callout ${data.lock.contact_admin ? "danger" : "warn"} mt" style="padding:10px 14px"><i class="bi bi-lock"></i><div><b>${data.lock.contact_admin ? "Pengisian sudah ditutup" : "Belum dapat diisi"}</b><p style="margin:0">${esc(data.lock.message)}</p></div></div>`;
+    const parts = [];
+    // <strong>, bukan <b>: di dalam .callout, <b> adalah judul (display:block)
+    if (me.role !== "admin" && win?.open && week === win.target_week) parts.push(`Pengisian dibuka sampai <strong>${esc(win.close_label)}</strong>.`);
+    if (w.status === "published") parts.push("CALAKAN pekan ini <strong>sudah terbit</strong>. Perubahan yang Anda simpan langsung terlihat oleh orang tua; Waka Kurikulum/Admin dapat mengirim notifikasi pembaruan.");
+    else parts.push(`Terbit otomatis ke orang tua pada <strong>Sabtu, ${esc(tgl(addDays(week, -2)).replace(/ \d{4}$/, ""))} pukul 19.00 WIB</strong>.`);
+    return `<div class="callout mt" style="padding:10px 14px"><i class="bi bi-info-circle"></i><div><p style="margin:0">${parts.join(" ")}</p></div></div>`;
+  }
+
+  let lastWarn = 0;
+  /** Aturan: bila waktu pengisian sudah lewat, arahkan ke Waka Kurikulum/Admin */
+  function warnLocked() {
+    if (!data?.lock || Date.now() - lastWarn < 1500) return;
+    lastWarn = Date.now();
+    window.Swal.fire({
+      icon: data.lock.contact_admin ? "warning" : "info",
+      title: data.lock.contact_admin ? "Hubungi Waka Kurikulum/Admin" : "CALAKAN belum dibuka",
+      text: data.lock.message,
+      confirmButtonText: "Mengerti",
+    });
+  }
 
   function render() {
     const w = data.week;
@@ -76,11 +105,7 @@ export default async function isi({ el, me, query, setLeaveGuard }) {
           <div>${statusBadge(w)}</div>
           ${data.can_publish ? `<a class="btn sm soft" href="#/calakan?class_id=${data.class.id}&week=${week}"><i class="bi bi-send"></i> Periksa & Terbitkan</a>` : ""}
         </div>
-        ${
-          w.status === "published"
-            ? `<div class="callout mt" style="padding:10px 14px"><i class="bi bi-info-circle"></i><div><p style="margin:0">CALAKAN pekan ini <b>sudah terbit</b>. Perubahan yang Anda simpan langsung terlihat oleh orang tua; wali kelas dapat mengirim notifikasi pembaruan.</p></div></div>`
-            : ""
-        }
+        ${scheduleNote()}
       </div></div>`;
 
     let html = "";
@@ -119,7 +144,10 @@ export default async function isi({ el, me, query, setLeaveGuard }) {
         onlyMine ? "Anda tidak memiliki jadwal mapel di kelas ini, atau jadwal belum disusun admin." : "Jadwal kelas ini belum disusun admin."
       )}</div>`;
     body.querySelectorAll("textarea").forEach(autoGrow);
+    el.querySelector("#save").hidden = locked();
+    el.querySelector("#copy").disabled = locked();
     updateDirty();
+    if (locked()) el.querySelector("#dirty-info").innerHTML = `<span class="muted"><i class="bi bi-lock"></i> Hanya dapat dilihat</span>`;
   }
 
   function autoGrow(t) {
@@ -150,7 +178,13 @@ export default async function isi({ el, me, query, setLeaveGuard }) {
     renderTabs();
     render();
     history.replaceState(null, "", `#/isi?class_id=${classId}&week=${week}`);
+    // Waktu pengisian sudah lewat & masih ada rencana kosong → langsung arahkan ke Waka Kurikulum/Admin
+    if (data.lock?.contact_admin && data.lock.pending) warnLocked();
   }
+
+  // Mencoba mengetik saat terkunci → tampilkan alasannya
+  body.addEventListener("pointerdown", (e) => locked() && e.target.closest(".fill-row.editable") && warnLocked());
+  body.addEventListener("focusin", (e) => locked() && e.target.tagName === "TEXTAREA" && warnLocked());
 
   async function save(btn) {
     if (!dirty.size) return;
@@ -161,6 +195,12 @@ export default async function isi({ el, me, query, setLeaveGuard }) {
         toast(`${r.saved} rencana tersimpan`);
         await load();
       } catch (err) {
+        // Jendela pengisian bisa tertutup saat halaman masih terbuka (mis. lewat Jumat 13.00)
+        if (err.data?.code === "locked") {
+          await window.Swal.fire({ icon: "warning", title: err.data.contact_admin ? "Hubungi Waka Kurikulum/Admin" : "CALAKAN belum dibuka", text: err.message, confirmButtonText: "Mengerti" });
+          dirty.clear();
+          return load();
+        }
         alertError(err, "Gagal menyimpan");
       }
     });

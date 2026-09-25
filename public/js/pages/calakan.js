@@ -1,5 +1,5 @@
 import { get, post, download } from "../api.js";
-import { esc, waliText, toast, alertError, alertOk, confirm, withBtn, emptyState, weekPicker, mondayOf, swalLoading, waktu } from "../ui.js";
+import { esc, waliText, toast, alertError, alertOk, confirm, withBtn, emptyState, weekPicker, mondayOf, swalLoading, waktu, tgl, addDays } from "../ui.js";
 import { weekView, bindWeekView, statusBadge, progressBar } from "../components/calview.js";
 import { exportPdf } from "../print.js";
 import { pushCard } from "../components/pushcard.js";
@@ -128,7 +128,13 @@ async function detail({ el, me, query, setTitle }) {
           <h2>Kelas ${esc(data.class.label)}</h2>
           <p>Pekan ${esc(w.label)} · Wali kelas: ${esc(waliText(data.class))}</p></div>
         <div style="text-align:right">${statusBadge(w)}
-          ${w.published_by_name && w.status === "published" ? `<div class="small muted" style="margin-top:4px">oleh ${esc(w.published_by_name)}</div>` : ""}
+          ${
+            w.status === "published"
+              ? `<div class="small muted" style="margin-top:4px">${w.published_by_name ? "oleh " + esc(w.published_by_name) : "terbit otomatis"}</div>`
+              : me.role !== "ortu"
+              ? `<div class="small muted" style="margin-top:4px">Terbit otomatis Sabtu, ${esc(tgl(addDays(week, -2)).replace(/ \d{4}$/, ""))} pukul 19.00 WIB</div>`
+              : ""
+          }
           ${me.role !== "ortu" ? `<div style="margin-top:8px;min-width:200px">${progressBar(data.progress.filled, data.progress.total)}</div>` : ""}</div>
       </div>`;
     if (me.role === "ortu" && !data.published) {
@@ -149,8 +155,10 @@ async function detail({ el, me, query, setTitle }) {
       html += `<button class="btn ghost sm" data-a="xls"><i class="bi bi-file-earmark-excel" style="color:#16a34a"></i> Excel</button>
                <button class="btn ghost sm" data-a="pdf"><i class="bi bi-file-earmark-pdf" style="color:#dc2626"></i> PDF</button>`;
     }
-    if (data.can_publish) {
+    if (me.role === "admin" || me.role === "wali")
       html += `<a class="btn ghost sm" href="#/isi?class_id=${classId}&week=${week}"><i class="bi bi-pencil-square"></i> Isi</a>`;
+    // Terbit otomatis Sabtu 19.00; tombol manual (kirim pembaruan/tarik) hanya untuk admin
+    if (data.can_publish) {
       if (w.status === "published") {
         if (w.has_changes) html += `<button class="btn sm warn" data-a="publish"><i class="bi bi-send"></i> Kirim Pembaruan</button>`;
         html += `<button class="btn ghost sm" data-a="unpublish" title="Tarik kembali menjadi draf"><i class="bi bi-arrow-counterclockwise"></i> Tarik</button>`;

@@ -84,13 +84,20 @@ async function admin({ el, me }) {
 }
 
 async function teacher({ el, me }) {
-  const ov = await get(`/calakan/overview`);
+  // Yang diisi selalu CALAKAN pekan depan (Kamis 10.00 – Jumat 13.00 WIB)
+  const win = await get("/calakan/window", { quiet: true });
+  const ov = await get(`/calakan/overview?week=${win.target_week}`);
   const mine = ov.classes.filter((c) => c.progress.mine > 0 || c.is_homeroom);
   const totalMine = mine.reduce((a, c) => a + c.progress.mine, 0);
   const filledMine = mine.reduce((a, c) => a + c.progress.mine_filled, 0);
   const home = ov.classes.find((c) => c.is_homeroom);
   el.innerHTML = `
-    ${hero(me, `Pekan ini (${esc(ov.label)}) Anda telah mengisi <b>${filledMine} dari ${totalMine}</b> rencana pembelajaran.`)}
+    ${hero(me, `Untuk pekan depan (${esc(ov.label)}) Anda telah mengisi <b>${filledMine} dari ${totalMine}</b> rencana pembelajaran.`)}
+    ${
+      win.open
+        ? `<div class="callout mt"><i class="bi bi-unlock"></i><div><b>Pengisian CALAKAN sedang dibuka</b><p>Isi rencana pekan ${esc(win.target_label)} paling lambat <b>${esc(win.close_label)}</b>.</p></div></div>`
+        : `<div class="callout mt"><i class="bi bi-clock"></i><div><b>Pengisian CALAKAN berikutnya</b><p>Dibuka <b>${esc(win.open_label)}</b> sampai ${esc(win.close_label)} untuk pekan ${esc(win.target_label)}. Di luar waktu itu, perubahan hanya oleh Waka Kurikulum/Admin.</p></div></div>`
+    }
     ${
       home
         ? `<div class="card mt"><div class="card-h"><h3><i class="bi bi-house-door" style="color:var(--p)"></i> Kelas Saya · ${esc(home.class.label)}</h3>${statusBadge(home)}</div>
@@ -98,7 +105,7 @@ async function teacher({ el, me }) {
         home.progress.filled,
         home.progress.total
       )}</div>
-      <a class="btn" href="#/calakan"><i class="bi bi-send"></i> Periksa & Terbitkan</a></div></div></div>`
+      <a class="btn" href="#/calakan?week=${win.target_week}"><i class="bi bi-eye"></i> Periksa CALAKAN</a></div></div></div>`
         : ""
     }
     <div class="card mt">
@@ -112,7 +119,7 @@ async function teacher({ el, me }) {
             (c) => `<tr><td class="main-cell"><div class="cell-title">${esc(c.class.label)}</div><div class="cell-sub">Rombel ${esc(c.class.rombel)}${c.is_homeroom ? " · Kelas perwalian" : ""}</div></td>
             <td data-label="Isian saya" style="min-width:170px">${progressBar(c.progress.mine_filled, c.progress.mine)}</td>
             <td data-label="Status">${statusBadge(c)}</td>
-            <td class="actions"><a class="btn sm" href="#/isi?class_id=${c.class.id}"><i class="bi bi-pencil"></i> Isi</a></td></tr>`
+            <td class="actions"><a class="btn sm" href="#/isi?class_id=${c.class.id}&week=${win.target_week}"><i class="bi bi-pencil"></i> Isi</a></td></tr>`
           )
           .join("")}</tbody></table></div>`
           : emptyState("bi-journal-x", "Belum ada mata pelajaran yang Anda ampu", "Hubungi admin untuk menetapkan mapel & kelas Anda.")

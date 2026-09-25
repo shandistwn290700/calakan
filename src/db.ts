@@ -177,6 +177,13 @@ const SCHEMA = [
     CONSTRAINT fk_notif_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  // Tugas terjadwal (pengingat & terbit otomatis) yang sudah dijalankan — mencegah push terkirim dua kali
+  `CREATE TABLE IF NOT EXISTS job_runs (
+    job_key VARCHAR(80) NOT NULL PRIMARY KEY,
+    ran_at DATETIME NOT NULL,
+    result TEXT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   `CREATE TABLE IF NOT EXISTS push_subscriptions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -317,4 +324,5 @@ export const ALL_TABLES = [
   "calakan_items",
   "notifications",
   "push_subscriptions",
+  "job_runs",
 ];

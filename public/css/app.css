@@ -468,7 +468,8 @@ table.cal .empty-cell { color: #b6c0cc; }
 .callout.warn i { color: var(--warn); }
 .callout.danger { background: #fef2f2; border-color: #fecaca; }
 .callout.danger i { color: var(--danger); }
-.callout b { display: block; }
+/* Hanya judul callout yang satu baris sendiri; <b> di dalam kalimat (<p>) tetap sebaris */
+.callout > div > b { display: block; }
 .callout p { margin: 2px 0 0; color: var(--muted); font-size: 13.5px; }
 
 .img-drop { border: 2px dashed var(--line); border-radius: 14px; padding: 16px; display: flex; gap: 14px; align-items: center; }

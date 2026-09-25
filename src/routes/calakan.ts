@@ -1,16 +1,21 @@
 import { Hono } from "hono";
 import { q, one, exec } from "../db";
 import { requireAuth, type User } from "../auth";
-import { accessibleClasses, assertCanView, buildWeek, buildWeeks, saveRows, copyRows, canPublish, isWaliOf, isHomeroomOf, schoolDays, weekLabel } from "../calakan";
+import { accessibleClasses, assertCanView, buildWeek, buildWeeks, saveRows, copyRows, publishWeek, isWaliOf, isHomeroomOf, schoolDays, weekLabel } from "../calakan";
+import { editLock, windowInfo } from "../schedule";
 import { buildWorkbook } from "../excel";
-import { notifyUsers } from "../push";
-import { bad, forbidden, int, mondayOf, parseYMD, rentangIndo, rentangSingkat, addDays } from "../util";
-import { getSettings } from "../settings";
+import { bad, forbidden, int, mondayOf, parseYMD, rentangIndo, addDays, HttpError } from "../util";
 
 type Env = { Variables: { user: User } };
 export const calakanApi = new Hono<Env>();
 const body = async (c: any) => (await c.req.json().catch(() => ({}))) as any;
 const auth = requireAuth();
+
+/** Wali kelas & guru hanya boleh mengubah isian di jendela Kamis 10.00 – Jumat 13.00 WIB (untuk pekan depan) */
+async function assertEditable(u: User, week: string) {
+  const lock = await editLock(u, week);
+  if (lock) throw new HttpError(403, lock.message, { code: "locked", contact_admin: lock.contact_admin });
+}
 
 const weekOf = (v: any) => {
   if (v && !parseYMD(String(v))) throw bad("Tanggal pekan tidak valid.");
@@ -28,6 +33,9 @@ calakanApi.get("/classes", auth, async (c) => {
   return c.json(list.map((x: any) => ({ ...x, is_homeroom: isHomeroomOf(x, u.id), teaches: mine.has(x.id) })));
 });
 
+/** Jendela pengisian berjalan/berikutnya (untuk banner & pekan bawaan halaman Isi Rencana) */
+calakanApi.get("/window", auth, (c) => c.json(windowInfo()));
+
 calakanApi.get("/week", auth, async (c) => {
   const u = c.get("user");
   const classId = int(c.req.query("class_id"));
@@ -37,7 +45,8 @@ calakanApi.get("/week", auth, async (c) => {
   if (u.role === "ortu" && data.week.status !== "published") {
     return c.json({ class: data.class, week: data.week, published: false, days: [] });
   }
-  return c.json({ ...data, published: data.week.status === "published" });
+  const lock = u.role === "ortu" ? null : await editLock(u, week);
+  return c.json({ ...data, published: data.week.status === "published", lock });
 });
 
 calakanApi.put("/week", requireAuth("admin", "wali", "guru"), async (c) => {
@@ -46,6 +55,7 @@ calakanApi.put("/week", requireAuth("admin", "wali", "guru"), async (c) => {
   const classId = int(b.class_id);
   const week = weekOf(b.week);
   await assertCanView(u, classId);
+  await assertEditable(u, week);
   const saved = await saveRows(u, classId, week, Array.isArray(b.rows) ? b.rows : []);
   return c.json({ ok: true, saved });
 });
@@ -60,52 +70,27 @@ calakanApi.post("/copy", requireAuth("admin", "wali", "guru"), async (c) => {
   if (fromClass === classId && fromWeek === week) throw bad("Sumber salinan sama dengan tujuan.");
   await assertCanView(u, classId);
   await assertCanView(u, fromClass);
+  await assertEditable(u, week);
   const saved = await copyRows(u, classId, week, fromClass, fromWeek);
   return c.json({ ok: true, saved });
 });
 
-calakanApi.post("/publish", requireAuth("admin", "wali"), async (c) => {
+// CALAKAN terbit otomatis Sabtu 19.00 (lihat schedule.ts). Penerbitan manual — mis. mengirim pembaruan
+// setelah Waka Kurikulum mengubah isian — hanya oleh admin.
+calakanApi.post("/publish", requireAuth("admin"), async (c) => {
   const u = c.get("user");
   const b = await body(c);
   const classId = int(b.class_id);
   const week = weekOf(b.week);
-  if (!(await canPublish(u, classId))) throw forbidden("Hanya wali kelas ini atau admin yang dapat menerbitkan CALAKAN.");
-  const data = await buildWeek(classId, week, u);
-  if (!data.progress.filled) throw bad("CALAKAN pekan ini masih kosong. Isi rencana terlebih dahulu.");
-  const wasPublished = data.week.status === "published";
-  await exec(
-    `INSERT INTO calakan_weeks (class_id, week_start, status, published_at, published_by) VALUES (?, ?, 'published', NOW(), ?)
-     ON DUPLICATE KEY UPDATE status = 'published', published_at = NOW(), published_by = VALUES(published_by), has_changes = 0`,
-    [classId, week, u.id]
-  );
-  // Kirim notifikasi ke orang tua di kelas ini
-  const parents = await q<any>(
-    `SELECT u.id FROM users u JOIN students s ON s.id = u.student_id WHERE s.class_id = ? AND u.role = 'ortu' AND u.is_active = 1`,
-    [classId]
-  );
-  const s = await getSettings();
-  // Judul notifikasi di HP hanya muat ±35 karakter: pekan di judul, kelas di awal isi,
-  // sehingga keduanya tetap terlihat walau wali kelas menulis pesan sendiri
-  const app = s.app_name || "CALAKAN";
-  const pekan = rentangSingkat(week, data.week.end);
-  const title = wasPublished ? `Pembaruan ${app} ${pekan}` : `${app} ${pekan} sudah terbit`;
-  const note = String(b.message || "").trim().slice(0, 200);
-  const msg = `Kelas ${data.class.label} · ${
-    note || (wasPublished ? "Ada perubahan rencana pembelajaran. Ketuk untuk melihat." : "Rencana pembelajaran sudah dapat dilihat. Ketuk untuk membuka.")
-  }`;
-  const res = await notifyUsers(
-    parents.map((p) => p.id),
-    { title, body: msg, url: `/#/calakan?week=${week}`, tag: `calakan-${classId}-${week}` }
-  );
+  const res = await publishWeek(classId, week, u.id, b.message);
+  if (!res) throw bad("CALAKAN pekan ini masih kosong. Isi rencana terlebih dahulu.");
   return c.json({ ok: true, notified: res.saved, pushed: res.sent });
 });
 
-calakanApi.post("/unpublish", requireAuth("admin", "wali"), async (c) => {
-  const u = c.get("user");
+calakanApi.post("/unpublish", requireAuth("admin"), async (c) => {
   const b = await body(c);
   const classId = int(b.class_id);
   const week = weekOf(b.week);
-  if (!(await canPublish(u, classId))) throw forbidden();
   await exec(`UPDATE calakan_weeks SET status = 'draft', has_changes = 0 WHERE class_id = ? AND week_start = ?`, [classId, week]);
   return c.json({ ok: true });
 });

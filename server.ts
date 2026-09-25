@@ -6,6 +6,8 @@ import { initPush } from "./src/push";
 import { getSettings, publicSettings } from "./src/settings";
 import { HttpError } from "./src/util";
 import { isHttps, sessionsCleanup } from "./src/auth";
+import { startScheduler, tick, windowInfo } from "./src/schedule";
+import { testClockEnabled, setTestNow } from "./src/clock";
 import { core } from "./src/routes/core";
 import { master } from "./src/routes/master";
 import { adminApi } from "./src/routes/admin";
@@ -61,6 +63,16 @@ app.use("*", async (c, next) => {
 
 // ——— API ———
 const api = new Hono();
+// Jam uji: memajukan waktu & menjalankan jadwal seketika. HANYA untuk pengujian, tidak pernah aktif di production.
+if (testClockEnabled()) {
+  console.warn("  ⚠ Jam uji aktif (CALAKAN_TEST_CLOCK=1). Jangan dipakai di production.");
+  api.post("/_test/clock", async (c) => {
+    const b = await c.req.json().catch(() => ({}));
+    setTestNow(b.now ?? null);
+    const ran = b.tick ? await tick() : [];
+    return c.json({ window: windowInfo(), ran });
+  });
+}
 api.route("/", core);
 api.route("/", master);
 api.route("/", adminApi);
@@ -204,6 +216,8 @@ try {
 }
 
 const server = Bun.serve({ port: config.port, fetch: app.fetch, maxRequestBodySize: 64 * 1024 * 1024 });
+// Pengingat pengisian (Kamis 10.00, Jumat 10.00 & 12.00) dan terbit otomatis (Sabtu 19.00), dicek tiap menit
+if (!testClockEnabled()) startScheduler();
 // Bersihkan sesi kedaluwarsa & catatan percobaan login lama setiap jam
 setInterval(() => sessionsCleanup().catch((e) => console.warn("[cleanup]", e?.message || e)), 60 * 60_000);
 const s = await getSettings();
